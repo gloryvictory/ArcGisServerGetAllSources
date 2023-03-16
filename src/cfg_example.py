@@ -33,3 +33,18 @@ FILE_LOG = DATETIME_CURRENT + '_' + FILE_LOG_NAME + '.log'
 FILE_LOG_FORMAT = '%(asctime)s %(levelname)s %(message)s'
 FOLDER_OUT = 'log'
 
+CSV_DELIMITER = ','
+CSV_FOLDER_OUT = 'out'
+CSV_FILE = 'res_out.csv'
+CSV_DICT = {'FIO': '',
+            'EMAIL': '',
+            'TEL': '',
+            'PRIORITY': '',
+            'CITY': '',
+            'GENDER': '',
+            'AGE': '',
+            'OBR': '',
+            'GR': '',
+            'ZAN': '',
+            'NAVIK': ''
+            }
