@@ -1,2 +1,2 @@
 # ArcGisServerGetAllSources
-GET All Sources list from ArcGisServer (10.x)
+GET All Sources list from ESRI ArcGis Server (10.x)
