@@ -1,6 +1,8 @@
 import os
 import csv
 import json
+import re
+import pandas as pd
 
 from arcgis.gis import GIS
 import pprint
@@ -9,8 +11,22 @@ from src import cfg
 from src.log import set_logger
 
 
+def csv2xlsx(file_csv: str):
+    read_file = pd.read_csv(file_csv)
+    xls_file = file_csv + '.xlsx'
+    if os.path.isfile(xls_file):
+        os.remove(xls_file)
+    read_file.to_excel(xls_file, index=None, header=True)
+    print(f"File Excel {xls_file} created !")
+
+
 def csv_file_out_create_with_headers():
     csv_dict = cfg.CSV_DICT
+    dir_csv = str(os.path.join(os.getcwd(), cfg.CSV_FOLDER_OUT))  # from cfg.file
+
+    if not os.path.exists(dir_csv):
+        os.makedirs(dir_csv)
+
     file_csv = str(os.path.join(os.getcwd(), cfg.CSV_FOLDER_OUT, cfg.CSV_FILE))  # from cfg.file
     # Если выходной CSV файл существует - удаляем его
     if os.path.isfile(file_csv):
@@ -18,10 +34,22 @@ def csv_file_out_create_with_headers():
     with open(file_csv, 'w', newline='', encoding='utf-8') as csv_file:  # Just use 'w' mode in 3.x
         csv_file_open = csv.DictWriter(csv_file, csv_dict.keys(), delimiter=cfg.CSV_DELIMITER)
         csv_file_open.writeheader()
+    return file_csv
+
+
+def csv_file_write_row_from_dict(file_csv: str, csv_dict: dict):
+    with open(file_csv, 'a', newline='\n', encoding='utf-8') as csv_file:  # Just use 'w' mode in 3.x
+        csv_file_open = csv.DictWriter(csv_file, csv_dict.keys(), delimiter=cfg.CSV_DELIMITER)
+        try:
+            csv_file_open.writerow(csv_dict)
+        except Exception as e:
+            print("Exception occurred " + str(e))  # , exc_info=True
+        csv_file.close()
 
 
 def get_all_layers_info():
     log = set_logger(cfg.FILE_LOG)
+    file_csv = ''
     # gis = GIS(cfg.PORTAL_URL)
     csv_dict = cfg.CSV_DICT
     file_csv = cfg.CSV_FILE
@@ -31,83 +59,72 @@ def get_all_layers_info():
     gis = GIS(cfg.PORTAL_URL, cfg.PORTAL_USER, cfg.PORTAL_PASS, verify_cert=False)
     print(f"Connected to {gis.properties.portalHostname} as {gis.users.me.username}")
 
+    file_csv = csv_file_out_create_with_headers()
+
     # layer_items = gis.content.get(layer_guid)  # <Item title:"Title_layer" type:Feature Layer Collection owner:user>
     servers = gis.admin.servers.list()
+    print(servers)
+
     for folder in cfg.SERVER_FOLDERS:
-        print(servers)
+        print(folder)
         server1 = servers[0]
         services = server1.services.list(folder=folder)
 
-        service = services[1]
-        ii = service.iteminformation
-        manifest = dict(ii.manifest)
+        # service = services[1]
 
-        if "status" in manifest:
-            if str(manifest['status']).lower() == 'error'.lower():
-                pprint.pprint(manifest)
-        else:
-            if "databases" in manifest:
-                # manifest_str = str(manifest).replace("\'", "\"")
-                # db_info = json.loads(manifest_str)
-                # layer_name = db_info['databases'][0]['datasets'][0]['onServerName']
-                try:
-                    layer_name = manifest['databases'][0]['datasets'][0]['onServerName']
-                    sde_server_name = manifest['databases'][0]['onServerName']
-                    sde_server_connection = manifest['databases'][0]['onServerConnectionString']
-                    print(layer_name)
-                    print(sde_server_name)
-                    print(sde_server_connection)
+        for service in services:
+            ii = service.iteminformation
+            manifest = dict(ii.manifest)
+            properties = dict(ii.properties)
 
-                    csv_dict['LAYER'] = layer_name
-                    csv_dict['ONSERVERNAME'] = sde_server_name
-                    csv_dict['CONN'] = sde_server_connection
+            if "status" in manifest:
+                if str(manifest['status']).lower() == 'error'.lower():
+                    pprint.pprint(manifest)
+            else:
+                if "databases" in manifest:
+                    server_re_str = r'SERVER=[A-Za-z0-9]+'
+                    instance_re_str = r'INSTANCE=(.*?);'
+                    user_re_str = r'USER=(.*?);'
+                    dbconn_re_str = r'DB_CONNECTION_PROPERTIES=(.*?);'
+
+                    try:
+                        by_ref = str(manifest['databases'][0]['byReference']).lower()
+                        if by_ref == 'true'.lower():
+                            layer_name = manifest['databases'][0]['datasets'][0]['onServerName']
+                            print(layer_name)
+                            sde_server_connection = manifest['databases'][0]['onServerConnectionString']
+                            print(sde_server_connection)
+                            csv_dict['FOLDER'] = folder
+                            csv_dict['LAYER'] = manifest['databases'][0]['datasets'][0]['onServerName']
+                            # csv_dict['ONSERVERNAME'] = manifest['databases'][0]['onServerName']
+                            csv_dict['SERVER'] = re.findall(server_re_str, sde_server_connection)[
+                                0]  # SERVER=[A-Za-z0-9]+ matching
+                            csv_dict['INSTANCE'] = re.findall(instance_re_str, sde_server_connection)[
+                                0]  # INSTANCE=(.*?); matching
+                            csv_dict['USER'] = re.findall(user_re_str, sde_server_connection)[0]  # USER=(.*?); matching
+                            csv_dict['DBCONPROP'] = re.findall(dbconn_re_str, sde_server_connection)[0]  # USER=(.*?); matching
+                            csv_dict['CONN'] = str(sde_server_connection).replace(";", "#")
+                            csv_dict['CLIENT'] = manifest['resources'][0]['clientName']
+                            csv_dict['PRJPATH'] = manifest['resources'][0]['onPremisePath']
+
+                            if "name" in properties:
+                                csv_dict['ONSERVERNAME'] = properties['name']
+                                csv_dict['TITLE'] = properties['title']
+                                csv_dict['GUID'] = properties['guid']
+                                csv_dict['SUMMARY'] = properties['summary']
+                                csv_dict['TYPE'] = properties['type']
+                                csv_dict['SR'] = properties['spatialReference']
+                        else:
+                            print(f"Найден локальный источник")
+
+                    except Exception as e:
+                        str_err = f"Exception occurred: {str(e)}.  manifest: {str(manifest)}"
+                        print(str_err)
+                        log.error(str_err)
+            csv_file_write_row_from_dict(file_csv, csv_dict)
+    csv2xlsx(file_csv)
 
 
-                except Exception as e:
-                    str_err = f"Exception occurred: {str(e)}.  Portal:  {gis.properties.portalHostname} as {gis.users.me.username}"
-                    print(str_err)
-                    log.error(str_err)
-
-
-
-        # for service in services:
-        #     ii = service.iteminformation
-        #     manifest = ii.manifest
-        #     pprint.pprint(manifest)
-        #     log.info(manifest)
-        #     # properties = ii.properties
-        # pprint.pprint(properties)
-        # log.info(properties)
-
-    # services = server1.services.list(folder="novatek")
-    # for service in services:
-    #     ii = service.iteminformation
-    #     manifest = ii.manifest
-    #     pprint.pprint(manifest)
-    #     properties = ii.properties
-    #     pprint.pprint(properties)
-    #     log.info(manifest)
-
-    # csv_dict['EMAIL'] = str_email
-    # csv_dict['TEL'] = str_tel
-    # csv_dict['PRIORITY'] = str_priority
-    # csv_dict['CITY'] = str_city
-    # csv_dict['GENDER'] = str_gender
-    # csv_dict['AGE'] = str_age
-    # csv_dict['GR'] = str_gr
-    # csv_dict['ZAN'] = str_zan
-    # csv_dict['OBR'] = str_obr
-    # csv_dict['NAVIK'] = str_nav
-    #
-    # with open(file_csv, 'a', newline='\n', encoding='utf-8') as csv_file:  # Just use 'w' mode in 3.x
-    #     csv_file_open = csv.DictWriter(csv_file, csv_dict.keys(), delimiter=cfg.CSV_DELIMITER)
-    #     try:
-    #         # print(csv_dict['FULLNAME'])
-    #         csv_file_open.writerow(csv_dict)
-    #     except Exception as e:
-    #         print("Exception occurred " + str(e))  # , exc_info=True
-    #     csv_file.close()
-    #
 
 
 if __name__ == "__main__":

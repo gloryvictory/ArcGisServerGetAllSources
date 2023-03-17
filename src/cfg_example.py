@@ -23,6 +23,7 @@ from time import strftime   # Load just the strftime Module from Time
 PORTAL_URL = "https:/SERVER/portal"
 PORTAL_USER = ''
 PORTAL_PASS = ''
+LAYER_URL = f"{PORTAL_URL}/home/item.html?id="
 
 SERVER_FOLDERS = ["", "FOLDER1", "FOLDER2"]
 
@@ -36,15 +37,22 @@ FOLDER_OUT = 'log'
 CSV_DELIMITER = ','
 CSV_FOLDER_OUT = 'out'
 CSV_FILE = 'res_out.csv'
-CSV_DICT = {'FIO': '',
-            'EMAIL': '',
-            'TEL': '',
-            'PRIORITY': '',
-            'CITY': '',
-            'GENDER': '',
-            'AGE': '',
-            'OBR': '',
-            'GR': '',
-            'ZAN': '',
-            'NAVIK': ''
+
+CSV_DICT = {
+            'FOLDER': '',
+            'LAYER': '',
+            'TITLE': '',
+            'SUMMARY': '',
+            'ONSERVERNAME': '',
+            'SERVER': '',
+            'INSTANCE': '',
+            'DBCONPROP': '',
+            'USER': '',
+            'TYPE': '',
+            'SR': '',
+            'GUID': '',
+            'CLIENT': '',
+            'PRJPATH': '',
+            'CONN': '',
+            'COMM': ''
             }
