@@ -49,7 +49,6 @@ def csv_file_write_row_from_dict(file_csv: str, csv_dict: dict):
 
 def get_all_layers_info():
     log = set_logger(cfg.FILE_LOG)
-    file_csv = ''
     # gis = GIS(cfg.PORTAL_URL)
     csv_dict = cfg.CSV_DICT
     file_csv = cfg.CSV_FILE
@@ -73,6 +72,8 @@ def get_all_layers_info():
         # service = services[1]
 
         for service in services:
+            for key in csv_dict:
+                csv_dict[key] = ''
             ii = service.iteminformation
             manifest = dict(ii.manifest)
             properties = dict(ii.properties)
@@ -121,7 +122,8 @@ def get_all_layers_info():
                         str_err = f"Exception occurred: {str(e)}.  manifest: {str(manifest)}"
                         print(str_err)
                         log.error(str_err)
-            csv_file_write_row_from_dict(file_csv, csv_dict)
+            if len(csv_dict['LAYER']):
+                csv_file_write_row_from_dict(file_csv, csv_dict)
     csv2xlsx(file_csv)
 
 
