@@ -80,24 +80,35 @@ def get_all_layers_info():
 
             if "status" in manifest:
                 if str(manifest['status']).lower() == 'error'.lower():
+                    print(f"Ошибка в этом манифесте!!!")
                     pprint.pprint(manifest)
             else:
                 if "databases" in manifest:
-                    server_re_str = r'SERVER=[A-Za-z0-9]+'
+                    server_re_str = r'SERVER=(.*?);'
                     instance_re_str = r'INSTANCE=(.*?);'
                     user_re_str = r'USER=(.*?);'
                     dbconn_re_str = r'DB_CONNECTION_PROPERTIES=(.*?);'
 
                     try:
+                        layer_name = manifest['databases'][0]['datasets'][0]['onServerName']
+                        print(layer_name)
+                        csv_dict['FOLDER'] = folder
+                        csv_dict['LAYER'] = manifest['databases'][0]['datasets'][0]['onServerName']
+                        csv_dict['CLIENT'] = manifest['resources'][0]['clientName']
+                        csv_dict['PRJPATH'] = manifest['resources'][0]['onPremisePath']
+
+                        if "name" in properties:
+                            csv_dict['ONSERVERNAME'] = properties['name']
+                            csv_dict['TITLE'] = properties['title']
+                            csv_dict['GUID'] = properties['guid']
+                            csv_dict['SUMMARY'] = properties['summary']
+                            csv_dict['TYPE'] = properties['type']
+                            csv_dict['SR'] = properties['spatialReference']
+
                         by_ref = str(manifest['databases'][0]['byReference']).lower()
                         if by_ref == 'true'.lower():
-                            layer_name = manifest['databases'][0]['datasets'][0]['onServerName']
-                            print(layer_name)
+                            csv_dict['LOCAL'] = "DATABASE"
                             sde_server_connection = manifest['databases'][0]['onServerConnectionString']
-                            print(sde_server_connection)
-                            csv_dict['FOLDER'] = folder
-                            csv_dict['LAYER'] = manifest['databases'][0]['datasets'][0]['onServerName']
-                            # csv_dict['ONSERVERNAME'] = manifest['databases'][0]['onServerName']
                             csv_dict['SERVER'] = re.findall(server_re_str, sde_server_connection)[
                                 0]  # SERVER=[A-Za-z0-9]+ matching
                             csv_dict['INSTANCE'] = re.findall(instance_re_str, sde_server_connection)[
@@ -105,18 +116,12 @@ def get_all_layers_info():
                             csv_dict['USER'] = re.findall(user_re_str, sde_server_connection)[0]  # USER=(.*?); matching
                             csv_dict['DBCONPROP'] = re.findall(dbconn_re_str, sde_server_connection)[0]  # USER=(.*?); matching
                             csv_dict['CONN'] = str(sde_server_connection).replace(";", "#")
-                            csv_dict['CLIENT'] = manifest['resources'][0]['clientName']
-                            csv_dict['PRJPATH'] = manifest['resources'][0]['onPremisePath']
-
-                            if "name" in properties:
-                                csv_dict['ONSERVERNAME'] = properties['name']
-                                csv_dict['TITLE'] = properties['title']
-                                csv_dict['GUID'] = properties['guid']
-                                csv_dict['SUMMARY'] = properties['summary']
-                                csv_dict['TYPE'] = properties['type']
-                                csv_dict['SR'] = properties['spatialReference']
                         else:
                             print(f"Найден локальный источник")
+                            pprint.pprint(manifest)
+                            pprint.pprint(properties)
+                            csv_dict['LOCAL'] = "LOCAL"
+                            csv_dict['FOLDER'] = folder
 
                     except Exception as e:
                         str_err = f"Exception occurred: {str(e)}.  manifest: {str(manifest)}"

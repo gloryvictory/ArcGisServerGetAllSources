@@ -39,6 +39,7 @@ CSV_FOLDER_OUT = 'out'
 CSV_FILE = 'res_out.csv'
 
 CSV_DICT = {
+            'LOCAL': '',
             'FOLDER': '',
             'LAYER': '',
             'TITLE': '',
