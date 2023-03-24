@@ -64,9 +64,11 @@ def get_all_layers_info():
     servers = gis.admin.servers.list()
     print(servers)
 
-    for folder in cfg.SERVER_FOLDERS:
+    # for folder in cfg.SERVER_FOLDERS: # если надо только конкретные
+    for folder in servers[0].services.folders:
         print(folder)
         server1 = servers[0]
+        # SERVER_FOLDERS = server1.services.folders
         services = server1.services.list(folder=folder)
 
         # service = services[1]
